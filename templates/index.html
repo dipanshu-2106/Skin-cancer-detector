@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <title>Skin Cancer Detection</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <div class="header-left">
+                <i class="fas fa-vial"></i>
+                <div>
+                    <div class="title">Skin Cancer Detection</div>
+                    <div class="status">Online</div>
+                </div>
+            </div>
+            <div class="header-right">
+                <button id="infoBtn" class="info-btn"><i class="fas fa-ellipsis-v"></i></button>
+            </div>
+        </div>
+
+        <div class="chat-box" id="chatBox">
+            <div class="welcome-message">
+                <div class="bot-avatar">
+                    <i class="fas fa-robot"></i>
+                </div>
+                <div class="message bot">
+                    Hello! Send your skin image to get an AI-based prediction.<br>
+                    <small>(Results are only for screening, consult a doctor.)</small>
+                </div>
+            </div>
+        </div>
+
+        <div class="input-area">
+            <input type="file" id="fileInput" accept="image/*" style="display: none" />
+
+            <div class="input-row">
+                <button id="uploadBtn" class="quick-btn" data-mode="file">Upload</button>
+                <button id="liveBtn" class="quick-btn" data-mode="camera">Live</button>
+                <button id="predictBtn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+            </div>
+
+            <div class="camera-preview" id="cameraPreview" style="display: none;">
+                <video id="video" autoplay playsinline></video>
+                <canvas id="canvas" style="display: none;"></canvas>
+                <button id="captureBtn" class="capture-btn">📸 Capture</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="infoModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>About Skin Cancer Detection</h3>
+                <button class="modal-close" onclick="closeInfo()">&times;</button>
+            </div>
+            <div class="modal-body">
+                This app uses AI to screen skin lesions for possible cancer.<br>
+                Results are <strong>not</strong> a substitute for a doctor's diagnosis.
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
