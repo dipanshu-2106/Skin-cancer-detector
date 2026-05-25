@@ -1,0 +1,5 @@
+skin_cancer_resnet50.keras
+static/uploads/
+__pycache__/
+*.pyc
+.env
