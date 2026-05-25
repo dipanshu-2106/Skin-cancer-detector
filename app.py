@@ -14,17 +14,20 @@ app = Flask(__name__)
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Model download from Google Drive
+# Model download from Google Drive (FIXED VERSION)
 MODEL_PATH = "skin_cancer_resnet50.keras"
 
-if not os.path.exists(MODEL_PATH):
-    print("Downloading model from Google Drive...")
-    gdown.download(
-        "https://drive.google.com/uc?id=1sm3_gYVSJiKHw1yuRXaeZvLW8UcCtlaa",
-        MODEL_PATH,
-        quiet=False
-    )
+file_id = "1sm3_gYVSJiKHw1yuRXaeZvLW8UcCtlaa"
+url = f"https://drive.google.com/uc?export=download&id={file_id}"
 
+if not os.path.exists(MODEL_PATH):
+    try:
+        print("Downloading model from Google Drive...")
+        gdown.download(url, MODEL_PATH, quiet=False)
+    except Exception as e:
+        print("Model download failed:", e)
+
+# Load model
 model = load_model(MODEL_PATH)
 img_size = 224
 
@@ -46,13 +49,9 @@ def predict():
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
 
-            img = image.load_img(
-                filepath,
-                target_size=(img_size, img_size)
-            )
+            img = image.load_img(filepath, target_size=(img_size, img_size))
 
         elif request.json and "image_base64" in request.json:
-
             img_data_str = request.json.get("image_base64", "")
 
             if not img_data_str or ',' not in img_data_str:
@@ -94,4 +93,3 @@ def predict():
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port, debug=False)
-    
