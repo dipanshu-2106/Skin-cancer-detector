@@ -9,30 +9,27 @@ import os
 
 app = Flask(__name__)
 
-# Folder for uploads
+# =========================
+# CONFIG
+# =========================
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# =========================
-# MODEL LOAD (SAFE VERSION)
-# =========================
 MODEL_PATH = "skin_cancer_resnet50.keras"
+IMG_SIZE = 224
 
-model = None
+# =========================
+# MODEL LOAD (LOCAL ONLY)
+# =========================
+if not os.path.exists(MODEL_PATH):
+    raise Exception(
+        "Model file not found! Please ensure skin_cancer_resnet50.keras "
+        "is present in the repo (Git LFS enabled)."
+    )
 
-try:
-    if not os.path.exists(MODEL_PATH):
-        raise Exception("Model file not found in project folder")
-
-    print("Loading model...")
-    model = tf.keras.models.load_model(MODEL_PATH)
-    print("Model loaded successfully!")
-
-except Exception as e:
-    print("Model loading failed:", e)
-    model = None
-
-img_size = 224
+print("Loading model...")
+model = tf.keras.models.load_model(MODEL_PATH)
+print("Model loaded successfully!")
 
 # =========================
 # ROUTES
@@ -45,12 +42,11 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
-        if model is None:
-            return jsonify({"error": "Model not loaded on server"})
-
         img = None
 
-        # Case 1: file upload
+        # -------------------------
+        # CASE 1: FILE UPLOAD
+        # -------------------------
         if "file" in request.files:
             file = request.files["file"]
 
@@ -60,9 +56,11 @@ def predict():
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
 
-            img = image.load_img(filepath, target_size=(img_size, img_size))
+            img = image.load_img(filepath, target_size=(IMG_SIZE, IMG_SIZE))
 
-        # Case 2: base64 image
+        # -------------------------
+        # CASE 2: BASE64 IMAGE
+        # -------------------------
         elif request.json and "image_base64" in request.json:
             img_data_str = request.json.get("image_base64", "")
 
@@ -73,16 +71,20 @@ def predict():
             img_bytes = base64.b64decode(img_data)
 
             img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-            img = img.resize((img_size, img_size))
+            img = img.resize((IMG_SIZE, IMG_SIZE))
 
         else:
             return jsonify({"error": "No image provided"})
 
-        # Preprocess
+        # -------------------------
+        # PREPROCESS
+        # -------------------------
         img_array = image.img_to_array(img) / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # Prediction
+        # -------------------------
+        # PREDICT
+        # -------------------------
         prediction = model.predict(img_array)[0][0]
 
         label = "Cancer" if prediction > 0.5 else "Non Cancer"
@@ -101,8 +103,8 @@ def predict():
 
 
 # =========================
-# RUN APP (RENDER SAFE)
+# RUN (RENDER SAFE)
 # =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port, debug=False)
+    app.run(host="0.0.0.0", port=port)
