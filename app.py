@@ -16,6 +16,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Model download from Google Drive
 MODEL_PATH = "skin_cancer_resnet50.keras"
+
 if not os.path.exists(MODEL_PATH):
     print("Downloading model from Google Drive...")
     gdown.download(
@@ -38,21 +39,28 @@ def predict():
     try:
         if "file" in request.files:
             file = request.files["file"]
+
             if file.filename == "":
                 return jsonify({"error": "No image provided"})
 
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
 
-            img = image.load_img(filepath, target_size=(img_size, img_size))
+            img = image.load_img(
+                filepath,
+                target_size=(img_size, img_size)
+            )
 
-        elif "image_base64" in request.json:
+        elif request.json and "image_base64" in request.json:
+
             img_data_str = request.json.get("image_base64", "")
+
             if not img_data_str or ',' not in img_data_str:
                 return jsonify({"error": "No image provided"})
 
             img_data = img_data_str.split(",")[1]
             img_bytes = base64.b64decode(img_data)
+
             img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
             img = img.resize((img_size, img_size))
 
@@ -63,18 +71,27 @@ def predict():
         img_array = np.expand_dims(img_array, axis=0)
 
         prediction = model.predict(img_array)[0][0]
+
         label = "Cancer" if prediction > 0.5 else "Non Cancer"
+
         confidence = (
             round(float(prediction) * 100, 2)
             if label == "Cancer"
             else round((1 - float(prediction)) * 100, 2)
         )
 
-        return jsonify({"result": label, "confidence": confidence})
+        return jsonify({
+            "result": label,
+            "confidence": confidence
+        })
 
     except Exception as e:
-        return jsonify({"error": f"Prediction failed: {str(e)}"})
+        return jsonify({
+            "error": f"Prediction failed: {str(e)}"
+        })
 
 
 if __name__ == "__main__":
-    app.run(debug=False)
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host="0.0.0.0", port=port, debug=False)
+    
