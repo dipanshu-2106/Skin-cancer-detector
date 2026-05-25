@@ -14,16 +14,23 @@ UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # =========================
-# MODEL LOAD (LOCAL ONLY)
+# MODEL LOAD (SAFE VERSION)
 # =========================
 MODEL_PATH = "skin_cancer_resnet50.keras"
 
-if not os.path.exists(MODEL_PATH):
-    raise Exception("❌ Model file not found! Put .keras file in project folder.")
+model = None
 
-print("Loading model...")
-model = tf.keras.models.load_model(MODEL_PATH)
-print("✅ Model loaded successfully!")
+try:
+    if not os.path.exists(MODEL_PATH):
+        raise Exception("Model file not found in project folder")
+
+    print("Loading model...")
+    model = tf.keras.models.load_model(MODEL_PATH)
+    print("Model loaded successfully!")
+
+except Exception as e:
+    print("Model loading failed:", e)
+    model = None
 
 img_size = 224
 
@@ -38,6 +45,9 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
+        if model is None:
+            return jsonify({"error": "Model not loaded on server"})
+
         img = None
 
         # Case 1: file upload
@@ -52,7 +62,7 @@ def predict():
 
             img = image.load_img(filepath, target_size=(img_size, img_size))
 
-        # Case 2: base64 image (camera/web)
+        # Case 2: base64 image
         elif request.json and "image_base64" in request.json:
             img_data_str = request.json.get("image_base64", "")
 
@@ -91,7 +101,7 @@ def predict():
 
 
 # =========================
-# RUN APP
+# RUN APP (RENDER SAFE)
 # =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
