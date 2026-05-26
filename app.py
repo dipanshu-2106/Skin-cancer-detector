@@ -18,6 +18,8 @@ MODEL_PATH = "skin_cancer_resnet50.h5"
 IMG_SIZE = 224
 
 # Load model
+model = None
+
 try:
 
     if not os.path.exists(MODEL_PATH):
@@ -27,8 +29,7 @@ try:
 
     model = tf.keras.models.load_model(
         MODEL_PATH,
-        compile=False,
-        safe_mode=False
+        compile=False
     )
 
     print("✅ Model loaded successfully!")
@@ -41,6 +42,7 @@ except Exception as e:
 
 @app.route("/")
 def home():
+
     return render_template("index.html")
 
 
@@ -50,18 +52,20 @@ def predict():
     try:
 
         if model is None:
+
             return jsonify({
                 "error": "Model not loaded"
             })
 
         img = None
 
-        # File Upload
+        # File upload
         if "file" in request.files:
 
             file = request.files["file"]
 
             if file.filename == "":
+
                 return jsonify({
                     "error": "No image selected"
                 })
@@ -78,12 +82,13 @@ def predict():
                 target_size=(IMG_SIZE, IMG_SIZE)
             )
 
-        # Webcam/Base64 Upload
+        # Base64/Webcam image
         elif request.json and "image_base64" in request.json:
 
             img_data_str = request.json["image_base64"]
 
             if "," not in img_data_str:
+
                 return jsonify({
                     "error": "Invalid image format"
                 })
@@ -101,6 +106,7 @@ def predict():
             )
 
         else:
+
             return jsonify({
                 "error": "No image provided"
             })
