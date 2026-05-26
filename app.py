@@ -1,48 +1,31 @@
+# FILE NAME: app.py
+
 from flask import Flask, render_template, request, jsonify
 import numpy as np
-import tensorflow as tf
 from tensorflow.keras.preprocessing import image
 from PIL import Image
-import io
-import base64
 import os
+
+from model_architecture import create_model
 
 app = Flask(__name__)
 
-# Upload folder
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-# Model settings
-MODEL_PATH = "skin_cancer_resnet50.h5"
 IMG_SIZE = 224
 
-# Load model
-model = None
+# CREATE MODEL
+model = create_model()
 
-try:
+# LOAD WEIGHTS
+model.load_weights("skin_cancer.weights.h5")
 
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(
-            f"Model file '{MODEL_PATH}' not found!"
-        )
-
-    model = tf.keras.models.load_model(
-        MODEL_PATH,
-        compile=False
-    )
-
-    print("✅ Model loaded successfully!")
-
-except Exception as e:
-
-    print(f"❌ Error loading model: {e}")
-    model = None
+print("✅ MODEL LOADED SUCCESSFULLY")
 
 
 @app.route("/")
 def home():
-
     return render_template("index.html")
 
 
@@ -51,87 +34,44 @@ def predict():
 
     try:
 
-        if model is None:
+        if "file" not in request.files:
 
             return jsonify({
-                "error": "Model not loaded"
+                "error": "No file uploaded"
             })
 
-        img = None
+        file = request.files["file"]
 
-        # File upload
-        if "file" in request.files:
-
-            file = request.files["file"]
-
-            if file.filename == "":
-
-                return jsonify({
-                    "error": "No image selected"
-                })
-
-            filepath = os.path.join(
-                UPLOAD_FOLDER,
-                file.filename
-            )
-
-            file.save(filepath)
-
-            img = image.load_img(
-                filepath,
-                target_size=(IMG_SIZE, IMG_SIZE)
-            )
-
-        # Base64/Webcam image
-        elif request.json and "image_base64" in request.json:
-
-            img_data_str = request.json["image_base64"]
-
-            if "," not in img_data_str:
-
-                return jsonify({
-                    "error": "Invalid image format"
-                })
-
-            img_data = img_data_str.split(",")[1]
-
-            img_bytes = base64.b64decode(img_data)
-
-            img = Image.open(
-                io.BytesIO(img_bytes)
-            ).convert("RGB")
-
-            img = img.resize(
-                (IMG_SIZE, IMG_SIZE)
-            )
-
-        else:
+        if file.filename == "":
 
             return jsonify({
-                "error": "No image provided"
+                "error": "No image selected"
             })
 
-        # Preprocessing
-        img_array = image.img_to_array(img)
-
-        img_array = img_array / 255.0
-
-        img_array = np.expand_dims(
-            img_array,
-            axis=0
+        filepath = os.path.join(
+            UPLOAD_FOLDER,
+            file.filename
         )
 
-        # Prediction
-        prediction = model.predict(img_array)
+        file.save(filepath)
 
-        prediction_value = float(prediction[0][0])
+        img = image.load_img(
+            filepath,
+            target_size=(IMG_SIZE, IMG_SIZE)
+        )
 
-        if prediction_value > 0.5:
+        img_array = image.img_to_array(img)
+        img_array = img_array / 255.0
+        img_array = np.expand_dims(img_array, axis=0)
+
+        prediction = model.predict(img_array)[0][0]
+
+        if prediction > 0.5:
 
             label = "Cancer"
 
             confidence = round(
-                prediction_value * 100,
+                float(prediction) * 100,
                 2
             )
 
@@ -140,7 +80,7 @@ def predict():
             label = "Non Cancer"
 
             confidence = round(
-                (1 - prediction_value) * 100,
+                (1 - float(prediction)) * 100,
                 2
             )
 
@@ -152,7 +92,7 @@ def predict():
     except Exception as e:
 
         return jsonify({
-            "error": f"Prediction failed: {str(e)}"
+            "error": str(e)
         })
 
 
@@ -164,6 +104,5 @@ if __name__ == "__main__":
 
     app.run(
         host="0.0.0.0",
-        port=port,
-        debug=False
+        port=port
     )
