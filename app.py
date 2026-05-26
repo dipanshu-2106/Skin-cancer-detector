@@ -14,7 +14,7 @@ UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 # Model settings
-MODEL_PATH = "skin_cancer_resnet50.keras"
+MODEL_PATH = "skin_cancer_resnet50.h5"
 IMG_SIZE = 224
 
 # Load model only once
