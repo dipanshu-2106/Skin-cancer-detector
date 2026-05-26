@@ -9,31 +9,27 @@ import os
 
 app = Flask(__name__)
 
-# =========================
-# CONFIG
-# =========================
+# Upload folder
 UPLOAD_FOLDER = "static/uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
+# Model settings
 MODEL_PATH = "skin_cancer_resnet50.keras"
 IMG_SIZE = 224
 
-# =========================
-# MODEL LOAD (LOCAL ONLY)
-# =========================
-if not os.path.exists(MODEL_PATH):
-    raise Exception(
-        "Model file not found! Please ensure skin_cancer_resnet50.keras "
-        "is present in the repo (Git LFS enabled)."
-    )
+# Load model only once
+try:
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found!")
 
-print("Loading model...")
-model = tf.keras.models.load_model(MODEL_PATH)
-print("Model loaded successfully!")
+    model = tf.keras.models.load_model(MODEL_PATH)
+    print("✅ Model loaded successfully")
 
-# =========================
-# ROUTES
-# =========================
+except Exception as e:
+    print(f"❌ Error loading model: {e}")
+    model = None
+
+
 @app.route("/")
 def home():
     return render_template("index.html")
@@ -42,30 +38,32 @@ def home():
 @app.route("/predict", methods=["POST"])
 def predict():
     try:
+
+        if model is None:
+            return jsonify({"error": "Model not loaded"})
+
         img = None
 
-        # -------------------------
-        # CASE 1: FILE UPLOAD
-        # -------------------------
+        # File upload
         if "file" in request.files:
+
             file = request.files["file"]
 
             if file.filename == "":
-                return jsonify({"error": "No image provided"})
+                return jsonify({"error": "No image selected"})
 
             filepath = os.path.join(UPLOAD_FOLDER, file.filename)
             file.save(filepath)
 
-            img = image.load_img(filepath, target_size=(IMG_SIZE, IMG_SIZE))
+            img = image.load_img(
+                filepath,
+                target_size=(IMG_SIZE, IMG_SIZE)
+            )
 
-        # -------------------------
-        # CASE 2: BASE64 IMAGE
-        # -------------------------
+        # Webcam/Base64 image
         elif request.json and "image_base64" in request.json:
-            img_data_str = request.json.get("image_base64", "")
 
-            if not img_data_str or "," not in img_data_str:
-                return jsonify({"error": "No image provided"})
+            img_data_str = request.json["image_base64"]
 
             img_data = img_data_str.split(",")[1]
             img_bytes = base64.b64decode(img_data)
@@ -76,20 +74,20 @@ def predict():
         else:
             return jsonify({"error": "No image provided"})
 
-        # -------------------------
-        # PREPROCESS
-        # -------------------------
-        img_array = image.img_to_array(img) / 255.0
+        # Image preprocessing
+        img_array = image.img_to_array(img)
+        img_array = img_array / 255.0
         img_array = np.expand_dims(img_array, axis=0)
 
-        # -------------------------
-        # PREDICT
-        # -------------------------
+        # Prediction
         prediction = model.predict(img_array)[0][0]
 
-        label = "Cancer" if prediction > 0.5 else "Non Cancer"
-
-        confidence = round(float(prediction) * 100, 2) if label == "Cancer" else round((1 - float(prediction)) * 100, 2)
+        if prediction > 0.5:
+            label = "Cancer"
+            confidence = round(float(prediction) * 100, 2)
+        else:
+            label = "Non Cancer"
+            confidence = round((1 - float(prediction)) * 100, 2)
 
         return jsonify({
             "result": label,
@@ -102,9 +100,6 @@ def predict():
         })
 
 
-# =========================
-# RUN (RENDER SAFE)
-# =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
     app.run(host="0.0.0.0", port=port)
