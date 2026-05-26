@@ -17,15 +17,24 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 MODEL_PATH = "skin_cancer_resnet50.h5"
 IMG_SIZE = 224
 
-# Load model only once
+# Load model
 try:
-    if not os.path.exists(MODEL_PATH):
-        raise FileNotFoundError(f"Model file '{MODEL_PATH}' not found!")
 
-    model = tf.keras.models.load_model(MODEL_PATH)
-    print("✅ Model loaded successfully")
+    if not os.path.exists(MODEL_PATH):
+        raise FileNotFoundError(
+            f"Model file '{MODEL_PATH}' not found!"
+        )
+
+    model = tf.keras.models.load_model(
+        MODEL_PATH,
+        compile=False,
+        safe_mode=False
+    )
+
+    print("✅ Model loaded successfully!")
 
 except Exception as e:
+
     print(f"❌ Error loading model: {e}")
     model = None
 
@@ -37,22 +46,31 @@ def home():
 
 @app.route("/predict", methods=["POST"])
 def predict():
+
     try:
 
         if model is None:
-            return jsonify({"error": "Model not loaded"})
+            return jsonify({
+                "error": "Model not loaded"
+            })
 
         img = None
 
-        # File upload
+        # File Upload
         if "file" in request.files:
 
             file = request.files["file"]
 
             if file.filename == "":
-                return jsonify({"error": "No image selected"})
+                return jsonify({
+                    "error": "No image selected"
+                })
 
-            filepath = os.path.join(UPLOAD_FOLDER, file.filename)
+            filepath = os.path.join(
+                UPLOAD_FOLDER,
+                file.filename
+            )
+
             file.save(filepath)
 
             img = image.load_img(
@@ -60,34 +78,65 @@ def predict():
                 target_size=(IMG_SIZE, IMG_SIZE)
             )
 
-        # Webcam/Base64 image
+        # Webcam/Base64 Upload
         elif request.json and "image_base64" in request.json:
 
             img_data_str = request.json["image_base64"]
 
+            if "," not in img_data_str:
+                return jsonify({
+                    "error": "Invalid image format"
+                })
+
             img_data = img_data_str.split(",")[1]
+
             img_bytes = base64.b64decode(img_data)
 
-            img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
-            img = img.resize((IMG_SIZE, IMG_SIZE))
+            img = Image.open(
+                io.BytesIO(img_bytes)
+            ).convert("RGB")
+
+            img = img.resize(
+                (IMG_SIZE, IMG_SIZE)
+            )
 
         else:
-            return jsonify({"error": "No image provided"})
+            return jsonify({
+                "error": "No image provided"
+            })
 
-        # Image preprocessing
+        # Preprocessing
         img_array = image.img_to_array(img)
+
         img_array = img_array / 255.0
-        img_array = np.expand_dims(img_array, axis=0)
+
+        img_array = np.expand_dims(
+            img_array,
+            axis=0
+        )
 
         # Prediction
-        prediction = model.predict(img_array)[0][0]
+        prediction = model.predict(img_array)
 
-        if prediction > 0.5:
+        prediction_value = float(prediction[0][0])
+
+        if prediction_value > 0.5:
+
             label = "Cancer"
-            confidence = round(float(prediction) * 100, 2)
+
+            confidence = round(
+                prediction_value * 100,
+                2
+            )
+
         else:
+
             label = "Non Cancer"
-            confidence = round((1 - float(prediction)) * 100, 2)
+
+            confidence = round(
+                (1 - prediction_value) * 100,
+                2
+            )
 
         return jsonify({
             "result": label,
@@ -95,11 +144,20 @@ def predict():
         })
 
     except Exception as e:
+
         return jsonify({
             "error": f"Prediction failed: {str(e)}"
         })
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host="0.0.0.0", port=port)
+
+    port = int(
+        os.environ.get("PORT", 5000)
+    )
+
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False
+    )
