@@ -11,6 +11,4 @@ RUN mkdir -p static/uploads
 
 EXPOSE 7860
 
-ENV FLASK_APP=app.py
-
 CMD ["gunicorn", "--bind", "0.0.0.0:7860", "app:app"]

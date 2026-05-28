@@ -24,7 +24,7 @@ if not os.path.exists(WEIGHTS_PATH):
     )
 
 model = create_model()
-model.load_weights(WEIGHTS_PATH, by_name=True, skip_mismatch=True)
+model.load_weights(WEIGHTS_PATH)
 print("✅ MODEL LOADED SUCCESSFULLY")
 
 
