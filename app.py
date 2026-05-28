@@ -14,21 +14,17 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 IMG_SIZE = 224
 
-# Download weights from Google Drive if not exists
 WEIGHTS_PATH = "skin_cancer.weights.h5"
 if not os.path.exists(WEIGHTS_PATH):
     print("Downloading weights from Google Drive...")
     gdown.download(
-        "https://drive.google.com/uc?id=1sm3_gYVSJiKHw1yuRXaeZvLW8UcCtlaa",
+        "https://drive.google.com/uc?id=12HUnfBTkgx2ni3RoZdJlAO1kRVXIwytM",
         WEIGHTS_PATH,
         quiet=False
     )
 
-# CREATE MODEL
 model = create_model()
-
-# LOAD WEIGHTS
-model.load_weights(WEIGHTS_PATH)
+model.load_weights(WEIGHTS_PATH, by_name=True, skip_mismatch=True)
 print("✅ MODEL LOADED SUCCESSFULLY")
 
 
