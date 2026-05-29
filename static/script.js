@@ -2,7 +2,6 @@ let selectedImage = null;
 let stream = null;
 let currentMode = "file";
 
-// Elements
 const fileInput = document.getElementById("fileInput");
 const uploadBtn = document.getElementById("uploadBtn");
 const liveBtn = document.getElementById("liveBtn");
@@ -15,15 +14,13 @@ const captureBtn = document.getElementById("captureBtn");
 const infoBtn = document.getElementById("infoBtn");
 const infoModal = document.getElementById("infoModal");
 
-
-// Add message (WhatsApp style)
 function addMessage(text, type, imageUrl = null) {
     const msgDiv = document.createElement("div");
     msgDiv.className = `message ${type}`;
 
     if (imageUrl) {
         msgDiv.innerHTML = `
-            <img src="${imageUrl}" style="max-width:200px; border-radius:12px; margin-top:8px;">
+            <img src="${imageUrl}" style="max-width:200px; border-radius:12px; margin-top:8px; display:block;">
             <div>${text}</div>
         `;
     } else {
@@ -34,28 +31,45 @@ function addMessage(text, type, imageUrl = null) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
-// File upload
-fileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+function stopCamera() {
+    if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+        stream = null;
+    }
+    video.srcObject = null;
+}
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        selectedImage = file;
-        addMessage("✅ Photo uploaded", "user", e.target.result);
-    };
-    reader.readAsDataURL(file);
-});
+async function initCamera() {
+    try {
+        stopCamera();
 
-uploadBtn.addEventListener("click", () => {
-    fileInput.click();
-});
+        const constraints = {
+            video: {
+                facingMode: { ideal: "environment" },
+                width: { ideal: 480 },
+                height: { ideal: 360 }
+            },
+            audio: false
+        };
 
+        stream = await navigator.mediaDevices.getUserMedia(constraints);
+        video.srcObject = stream;
 
-// Live camera mode
+        await video.play();
+
+        cameraPreview.style.display = "flex";
+        addMessage("✅ Camera started successfully.", "bot");
+    } catch (err) {
+        console.error("Camera error:", err);
+        addMessage("❌ Camera access failed: " + err.message, "bot");
+        setMode("file");
+    }
+}
+
 function setMode(mode) {
     currentMode = mode;
-    document.querySelectorAll(".quick-btn").forEach((btn) => {
+
+    document.querySelectorAll(".quick-btn").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.mode === mode);
     });
 
@@ -64,68 +78,64 @@ function setMode(mode) {
         initCamera();
     } else {
         cameraPreview.style.display = "none";
-        if (stream) {
-            stopCamera();
-        }
+        stopCamera();
     }
 }
 
-function initCamera() {
-    if (stream) return;
-    navigator.mediaDevices
-        .getUserMedia({
-            video: { width: 480, height: 360, facingMode: "user" },
-        })
-        .then((s) => {
-            stream = s;
-            video.srcObject = stream;
-        })
-        .catch((err) => {
-            addMessage("❌ Camera access denied or not available.", "bot");
-            setMode("file");
-        });
-}
+fileInput.addEventListener("change", (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
 
-function stopCamera() {
-    if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-        stream = null;
-    }
-}
+    selectedImage = file;
 
-captureBtn.addEventListener("click", () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0);
-
-    canvas.toBlob(
-        (blob) => {
-            selectedImage = new File([blob], "capture.png", { type: "image/png" });
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                addMessage("📸 Live photo captured!", "user", e.target.result);
-                // Capture के बाद camera और capture बंद हो जाएँ
-                stopCamera();
-                cameraPreview.style.display = "none";
-            };
-            reader.readAsDataURL(blob);
-        },
-        "image/png"
-    );
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+        addMessage("✅ Photo uploaded", "user", ev.target.result);
+    };
+    reader.readAsDataURL(file);
 });
 
-// Switch modes
+uploadBtn.addEventListener("click", () => {
+    setMode("file");
+    fileInput.click();
+});
+
 liveBtn.addEventListener("click", () => {
     setMode("camera");
 });
-uploadBtn.addEventListener("click", () => {
-    setMode("file");
+
+captureBtn.addEventListener("click", () => {
+    if (!video.videoWidth || !video.videoHeight) {
+        addMessage("❌ Camera not ready yet. Please wait a moment.", "bot");
+        return;
+    }
+
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    const ctx = canvas.getContext("2d");
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+    canvas.toBlob((blob) => {
+        if (!blob) {
+            addMessage("❌ Failed to capture image.", "bot");
+            return;
+        }
+
+        selectedImage = new File([blob], "capture.png", { type: "image/png" });
+
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            addMessage("📸 Live photo captured!", "user", ev.target.result);
+        };
+        reader.readAsDataURL(blob);
+
+        stopCamera();
+        cameraPreview.style.display = "none";
+    }, "image/png");
 });
 
-
-// Predict / send button (WhatsApp style)
-function sendImage() {
+async function sendImage() {
     if (!selectedImage) {
         addMessage("❌ Pehle photo upload ya capture karo.", "bot");
         return;
@@ -133,51 +143,51 @@ function sendImage() {
 
     predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
     predictBtn.disabled = true;
+
     addMessage("🔬 AI analyzing your image...", "bot");
 
-    const formData = new FormData();
-    formData.append("file", selectedImage);
+    try {
+        const formData = new FormData();
+        formData.append("file", selectedImage);
 
-    fetch("/predict", {
-        method: "POST",
-        body: formData,
-    })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.result) {
-                const emoji = data.result === "Cancer" ? "⚠️" : "✅";
-                const color = data.result === "Cancer" ? "#ff4757" : "#2ed573";
-                const msg = `${emoji} <strong>${data.result}</strong> (${data.confidence}%)<br>
-                            <small style="color:${color}">Doctor se confirm karna zaroori hai.</small>`;
-                addMessage(msg, "bot");
-            } else {
-                addMessage("❌ Prediction failed: " + (data.error || "Unknown error"), "bot");
-            }
-        })
-        .catch((err) => {
-            addMessage("❌ Server error! Try again.", "bot");
-        })
-        .finally(() => {
-            predictBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
-            predictBtn.disabled = false;
-            selectedImage = null;
-            fileInput.value = "";
+        const res = await fetch("/predict", {
+            method: "POST",
+            body: formData
         });
+
+        const data = await res.json();
+
+        if (data.result) {
+            const emoji = data.result === "Cancer" ? "⚠️" : "✅";
+            const color = data.result === "Cancer" ? "#ff4757" : "#2ed573";
+            const msg = `${emoji} <strong>${data.result}</strong> (${data.confidence}%)<br>
+                         <small style="color:${color}">Doctor se confirm karna zaroori hai.</small>`;
+            addMessage(msg, "bot");
+        } else {
+            addMessage("❌ Prediction failed: " + (data.error || "Unknown error"), "bot");
+        }
+    } catch (err) {
+        console.error(err);
+        addMessage("❌ Server error! Try again.", "bot");
+    } finally {
+        predictBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
+        predictBtn.disabled = false;
+        selectedImage = null;
+        fileInput.value = "";
+    }
 }
 
 predictBtn.addEventListener("click", sendImage);
 
-
-// Info modal (top right 3 dots)
 infoBtn.addEventListener("click", () => {
     infoModal.style.display = "flex";
 });
 
-window.onclick = (e) => {
+window.addEventListener("click", (e) => {
     if (e.target === infoModal) {
         infoModal.style.display = "none";
     }
-};
+});
 
 function closeInfo() {
     infoModal.style.display = "none";

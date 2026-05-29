@@ -13,7 +13,6 @@ body {
     justify-content: center;
 }
 
-/* CHAT CONTAINER */
 .chat-container {
     width: 420px;
     height: 680px;
@@ -27,7 +26,6 @@ body {
     position: relative;
 }
 
-/* HEADER */
 .chat-header {
     background: linear-gradient(135deg, #075e54 0%, #128c7e 100%);
     color: white;
@@ -63,7 +61,6 @@ body {
     font-weight: 500;
 }
 
-/* INFO BUTTON (3 dots) */
 .info-btn {
     background: rgba(255, 255, 255, 0.2);
     border: none;
@@ -79,7 +76,6 @@ body {
     background: rgba(255, 255, 255, 0.3);
 }
 
-/* CHAT BOX */
 .chat-box {
     flex: 1;
     padding: 20px;
@@ -110,14 +106,12 @@ body {
     border-bottom-right-radius: 8px;
 }
 
-/* INPUT AREA */
 .input-area {
     padding: 16px 20px;
     background: #f0f0f0;
     border-top: 1px solid rgba(0, 0, 0, 0.1);
 }
 
-/* INPUT ROW: Upload + Live + Send */
 .input-row {
     display: flex;
     align-items: center;
@@ -126,7 +120,6 @@ body {
     justify-content: space-between;
 }
 
-/* Bigger quick buttons */
 .quick-btn {
     flex: 1;
     padding: 12px 18px;
@@ -139,7 +132,6 @@ body {
     transition: all 0.2s;
 }
 
-/* Upload button */
 .quick-btn[data-mode="file"] {
     background: #ffa500;
     color: #ffffff;
@@ -150,7 +142,6 @@ body {
     transform: translateY(-2px);
 }
 
-/* Live button */
 .quick-btn[data-mode="camera"] {
     background: #2ac940;
     color: #ffffff;
@@ -161,12 +152,10 @@ body {
     transform: translateY(-2px);
 }
 
-/* Active button indicator */
 .quick-btn.active {
     border: 2px solid rgba(255, 255, 255, 0.8);
 }
 
-/* SEND BUTTON (WhatsApp style, bigger) */
 .send-btn {
     width: 56px;
     height: 56px;
@@ -184,7 +173,6 @@ body {
     transform: scale(1.1);
 }
 
-/* CAMERA PREVIEW */
 .camera-preview {
     background: #000;
     border-radius: 14px;
@@ -198,9 +186,11 @@ body {
 
 #video {
     width: 100%;
-    max-height: 240px;
+    height: 240px;
+    object-fit: cover;
     border-radius: 12px;
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    background: #000;
 }
 
 .capture-btn {
@@ -219,7 +209,6 @@ body {
     box-shadow: 0 10px 30px rgba(255, 107, 53, 0.45);
 }
 
-/* INFO MODAL */
 .modal {
     display: none;
     position: fixed;
