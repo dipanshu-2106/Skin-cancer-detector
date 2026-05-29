@@ -1,7 +1,5 @@
-flask==3.0.0
-tensorflow==2.13.0
-numpy==1.24.3
-Pillow==10.2.0
-gunicorn==21.2.0
-gdown==5.1.0
-h5py==3.9.0
+flask
+tensorflow
+pillow
+numpy
+gunicorn
