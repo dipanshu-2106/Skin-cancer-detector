@@ -1,7 +1,0 @@
-skin_cancer_resnet50.keras
-skin_cancer_resnet50.h5
-skin_cancer.weights.h5
-static/uploads/
-__pycache__/
-*.pyc
-.env
