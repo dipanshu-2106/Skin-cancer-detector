@@ -1,157 +1,440 @@
-let selectedImage = null;
+﻿let selectedImage = null;
 let stream = null;
-let currentMode = "file";
-
-const fileInput = document.getElementById("fileInput");
-const uploadBtn = document.getElementById("uploadBtn");
-const liveBtn = document.getElementById("liveBtn");
-const predictBtn = document.getElementById("predictBtn");
-const chatBox = document.getElementById("chatBox");
-const cameraPreview = document.getElementById("cameraPreview");
-const video = document.getElementById("video");
-const canvas = document.getElementById("canvas");
-const captureBtn = document.getElementById("captureBtn");
-const infoBtn = document.getElementById("infoBtn");
-const infoModal = document.getElementById("infoModal");
-
-function addMessage(text, type, imageUrl = null) {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = `message ${type}`;
-    if (imageUrl) {
-        msgDiv.innerHTML = `
-            <img src="${imageUrl}" style="max-width:200px; border-radius:12px; margin-top:8px;">
-            <div>${text}</div>
-        `;
-    } else {
-        msgDiv.innerHTML = text;
-    }
-    chatBox.appendChild(msgDiv);
-    chatBox.scrollTop = chatBox.scrollHeight;
-}
-
-fileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        selectedImage = file;
-        addMessage("✅ Photo uploaded", "user", e.target.result);
-    };
-    reader.readAsDataURL(file);
-});
-
-uploadBtn.addEventListener("click", () => {
-    setMode("file");
-    fileInput.click();
-});
-
-function setMode(mode) {
-    currentMode = mode;
-    document.querySelectorAll(".quick-btn").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.mode === mode);
-    });
-    if (mode === "camera") {
-        cameraPreview.style.display = "flex";
-        initCamera();
-    } else {
-        cameraPreview.style.display = "none";
-        if (stream) stopCamera();
-    }
-}
-
-function initCamera() {
-    if (stream) return;
-    navigator.mediaDevices
-        .getUserMedia({ video: { width: 480, height: 360, facingMode: "user" } })
-        .then((s) => {
-            stream = s;
-            video.srcObject = stream;
-        })
-        .catch(() => {
-            addMessage("❌ Camera access denied or not available.", "bot");
-            setMode("file");
+const fileInput =
+    document.getElementById("fileInput");
+const uploadBtn =
+    document.getElementById("uploadBtn");
+const liveBtn =
+    document.getElementById("liveBtn");
+const predictBtn =
+    document.getElementById("predictBtn");
+const chatBox =
+    document.getElementById("chatBox");
+const cameraBox =
+    document.getElementById("cameraBox");
+const cameraPreview =
+    document.getElementById("cameraPreview");
+const captureBtn =
+    document.getElementById("captureBtn");
+const closeCameraBtn =
+    document.getElementById("closeCameraBtn");
+// =================================
+// AUTO SCROLL
+// =================================
+function scrollToLatest() {
+    setTimeout(() => {
+        chatBox.scrollTo({
+            top: chatBox.scrollHeight,
+            behavior: "smooth"
         });
+    }, 100);
 }
-
+// =================================
+// UPLOAD
+// =================================
+uploadBtn.addEventListener(
+    "click",
+    () => {
+        fileInput.click();
+    }
+);
+// =================================
+// FILE SELECT
+// =================================
+fileInput.addEventListener(
+    "change",
+    (event) => {
+        const file =
+            event.target.files[0];
+        if (!file) {
+            return;
+        }
+        selectedImage = file;
+        showImage(file);
+    }
+);
+// =================================
+// SHOW USER IMAGE
+// =================================
+function showImage(file) {
+    const imageURL =
+        URL.createObjectURL(file);
+    const row =
+        document.createElement("div");
+    row.className =
+        "user-row";
+    row.innerHTML = `
+        <div class="user-bubble">
+            <img
+                src="${imageURL}"
+                class="preview-image"
+            >
+            <div class="selected-text">
+                📷 Skin image uploaded
+            </div>
+        </div>
+    `;
+    chatBox.appendChild(row);
+    scrollToLatest();
+}
+// =================================
+// LIVE CAMERA
+// =================================
+liveBtn.addEventListener(
+    "click",
+    async () => {
+        try {
+            stream =
+                await navigator
+                    .mediaDevices
+                    .getUserMedia({
+                        video: {
+                            facingMode:
+                                "environment"
+                        },
+                        audio: false
+                    });
+            cameraPreview.srcObject =
+                stream;
+            cameraBox.classList.add(
+                "active"
+            );
+        }
+        catch (error) {
+            alert(
+                "Camera permission denied."
+            );
+        }
+    }
+);
+// =================================
+// CAPTURE
+// =================================
+captureBtn.addEventListener(
+    "click",
+    () => {
+        if (!stream) {
+            return;
+        }
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+        canvas.width =
+            cameraPreview.videoWidth;
+        canvas.height =
+            cameraPreview.videoHeight;
+        const context =
+            canvas.getContext("2d");
+        context.drawImage(
+            cameraPreview,
+            0,
+            0,
+            canvas.width,
+            canvas.height
+        );
+        canvas.toBlob(
+            (blob) => {
+                selectedImage =
+                    new File(
+                        [blob],
+                        "camera-image.jpg",
+                        {
+                            type:
+                                "image/jpeg"
+                        }
+                    );
+                showImage(
+                    selectedImage
+                );
+                stopCamera();
+            },
+            "image/jpeg"
+        );
+    }
+);
+// =================================
+// STOP CAMERA
+// =================================
+closeCameraBtn.addEventListener(
+    "click",
+    stopCamera
+);
 function stopCamera() {
     if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
+        stream
+            .getTracks()
+            .forEach(
+                track =>
+                    track.stop()
+            );
         stream = null;
     }
+    cameraPreview.srcObject =
+        null;
+    cameraBox.classList.remove(
+        "active"
+    );
 }
-
-captureBtn.addEventListener("click", () => {
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
-    const ctx = canvas.getContext("2d");
-    ctx.drawImage(video, 0, 0);
-    canvas.toBlob((blob) => {
-        selectedImage = new File([blob], "capture.png", { type: "image/png" });
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            addMessage("📸 Live photo captured!", "user", e.target.result);
-            stopCamera();
-            cameraPreview.style.display = "none";
-        };
-        reader.readAsDataURL(blob);
-    }, "image/png");
-});
-
-liveBtn.addEventListener("click", () => {
-    setMode("camera");
-});
-
-function sendImage() {
-    if (!selectedImage) {
-        addMessage("❌ Pehle photo upload ya capture karo.", "bot");
-        return;
-    }
-    predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
-    predictBtn.disabled = true;
-    addMessage("🔬 AI analyzing your image...", "bot");
-
-    const formData = new FormData();
-    formData.append("file", selectedImage);
-
-    fetch("/predict", {
-        method: "POST",
-        body: formData,
-    })
-        .then((res) => res.json())
-        .then((data) => {
-            if (data.result) {
-                const emoji = data.result === "Cancer" ? "⚠️" : "✅";
-                const color = data.result === "Cancer" ? "#ff4757" : "#2ed573";
-                const msg = `${emoji} <strong>${data.result}</strong> (${data.confidence}%)<br>
-                            <small style="color:${color}">Doctor se confirm karna zaroori hai.</small>`;
-                addMessage(msg, "bot");
-            } else {
-                addMessage("❌ Prediction failed: " + (data.error || "Unknown error"), "bot");
+// =================================
+// PREDICT
+// =================================
+predictBtn.addEventListener(
+    "click",
+    async () => {
+        if (!selectedImage) {
+            addBotMessage(
+                "Please upload or capture a skin image first."
+            );
+            return;
+        }
+        // -----------------------------
+        // ANALYZING MESSAGE
+        // -----------------------------
+        addAnalyzingMessage();
+        const formData =
+            new FormData();
+        formData.append(
+            "image",
+            selectedImage
+        );
+        try {
+            const response =
+                await fetch(
+                    "/predict",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
+                );
+            const data =
+                await response.json();
+            if (!data.success) {
+                addBotMessage(
+                    "❌ " +
+                    data.error
+                );
+                return;
             }
-        })
-        .catch(() => {
-            addMessage("❌ Server error! Try again.", "bot");
-        })
-        .finally(() => {
-            predictBtn.innerHTML = '<i class="fas fa-paper-plane"></i>';
-            predictBtn.disabled = false;
-            selectedImage = null;
-            fileInput.value = "";
-        });
-}
-
-predictBtn.addEventListener("click", sendImage);
-
-infoBtn.addEventListener("click", () => {
-    infoModal.style.display = "flex";
-});
-
-window.onclick = (e) => {
-    if (e.target === infoModal) {
-        infoModal.style.display = "none";
+            // -----------------------------
+            // SHOW RESULT
+            // -----------------------------
+            showResult(data);
+        }
+        catch (error) {
+            console.error(error);
+            addBotMessage(
+                "❌ Unable to connect to the AI server."
+            );
+        }
     }
-};
-
-function closeInfo() {
-    infoModal.style.display = "none";
+);
+// =================================
+// ANALYZING MESSAGE
+// =================================
+function addAnalyzingMessage() {
+    const row =
+        document.createElement("div");
+    row.className =
+        "result-row";
+    row.innerHTML = `
+        <div class="bot-icon">
+            🤖
+        </div>
+        <div class="result-bubble">
+            <div class="result-title">
+                🔬 AI Assistant
+            </div>
+            <div class="analyzing">
+                AI is analyzing your image
+                <span class="dots">...</span>
+            </div>
+        </div>
+    `;
+    chatBox.appendChild(row);
+    scrollToLatest();
+    // Animated dots
+    let count = 0;
+    const dots =
+        row.querySelector(".dots");
+    const interval =
+        setInterval(() => {
+            count++;
+            if (count > 3) {
+                count = 1;
+            }
+            dots.textContent =
+                ".".repeat(count);
+        }, 400);
+    // Stop animation later
+    setTimeout(() => {
+        clearInterval(interval);
+    }, 10000);
+}
+// =================================
+// BOT MESSAGE
+// =================================
+function addBotMessage(text) {
+    const row =
+        document.createElement("div");
+    row.className =
+        "result-row";
+    row.innerHTML = `
+        <div class="bot-icon">
+            🤖
+        </div>
+        <div class="result-bubble">
+            <div class="result-title">
+                AI Assistant
+            </div>
+            <div class="normal-message">
+                ${text}
+            </div>
+        </div>
+    `;
+    chatBox.appendChild(row);
+    scrollToLatest();
+}
+// =================================
+// RESULT
+// =================================
+function showResult(data) {
+    const cancer =
+        data.cancer_score;
+    const nonCancer =
+        data.non_cancer_confidence;
+    const row =
+        document.createElement("div");
+    row.className =
+        "result-row";
+    row.innerHTML = `
+        <div class="bot-icon">
+            🤖
+        </div>
+        <div class="result-bubble result-card">
+            <div class="result-title">
+                🧠 AI Analysis Complete
+            </div>
+            <!-- CANCER -->
+            <div class="score-block">
+                <div class="score-header">
+                    <span>
+                        Cancer
+                    </span>
+                    <strong>
+                        ${cancer}%
+                    </strong>
+                </div>
+                <div class="progress">
+                    <div
+                        class="progress-fill cancer-fill"
+                        style="
+                            width:${cancer}%;
+                        "
+                    ></div>
+                </div>
+                <div class="score-label">
+                    Score
+                </div>
+            </div>
+            <!-- NON CANCER -->
+            <div class="score-block">
+                <div class="score-header">
+                    <span>
+                        Non-Cancer
+                    </span>
+                    <strong>
+                        ${nonCancer}%
+                    </strong>
+                </div>
+                <div class="progress">
+                    <div
+                        class="progress-fill non-cancer-fill"
+                        style="
+                            width:${nonCancer}%;
+                        "
+                    ></div>
+                </div>
+                <div class="score-label">
+                    Confidence
+                </div>
+            </div>
+            <!-- DOCTOR -->
+            <div class="doctor-warning">
+                ⚠️ Please confirm the result
+                with a qualified doctor.
+            </div>
+        </div>
+    `;
+    chatBox.appendChild(row);
+    scrollToLatest();
+}
+/* =========================================
+   RESET BUTTON
+========================================= */
+const resetBtn =
+    document.getElementById("resetBtn");
+resetBtn.addEventListener(
+    "click",
+    () => {
+        resetApplication();
+    }
+);
+/* =========================================
+   RESET APPLICATION
+========================================= */
+function resetApplication() {
+    /*
+       Stop camera if running
+    */
+    stopCamera();
+    /*
+       Remove all chat messages
+    */
+    chatBox.classList.add(
+        "resetting"
+    );
+    setTimeout(() => {
+        chatBox.innerHTML = `
+            <div class="bot-row">
+                <div class="bot-icon">
+                    🤖
+                </div>
+                <div class="bot-bubble">
+                    <div class="hello">
+                        Hello!
+                    </div>
+                    <div class="main-text">
+                        Send your skin image to get
+                        an AI-based prediction.
+                    </div>
+                    <div class="notice">
+                        Results are only for screening,
+                        consult a doctor.
+                    </div>
+                </div>
+            </div>
+        `;
+        /*
+           Remove selected image
+        */
+        selectedImage = null;
+        /*
+           Reset file input
+        */
+        fileInput.value = "";
+        /*
+           Remove animation
+        */
+        chatBox.classList.remove(
+            "resetting"
+        );
+        /*
+           Go to top
+        */
+        chatBox.scrollTo({
+            top: 0,
+            behavior: "instant"
+        });
+    }, 150);
 }
